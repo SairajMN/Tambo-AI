@@ -129,7 +129,7 @@ export class ValidationTool {
       if (schema.properties) {
         Object.entries(schema.properties).forEach(([key, prop]) => {
           if (typeof prop === "object" && prop !== null) {
-            if (!prop.type) {
+            if (!prop.hasOwnProperty("type")) {
               warnings.push(`Property '${key}' missing type definition`);
             }
           }
@@ -294,7 +294,8 @@ export class ValidationTool {
   async validateMultiple(requests: ValidationRequest[]): Promise<{
     success: boolean;
     results?: ValidationResult[];
-    error?: string;
+    error?: string;  
+    message?: string;
   }> {
     const results: ValidationResult[] = [];
 

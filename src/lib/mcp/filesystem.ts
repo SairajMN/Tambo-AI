@@ -14,6 +14,13 @@ export interface FileOperationResult {
   error?: string;
 }
 
+export interface BatchWriteResult {
+  success: boolean;
+  results?: FileOperationResult[];
+  error?: string;
+  message?: string;
+}
+
 export class FileSystemTool {
   private static instance: FileSystemTool;
   private files: Map<string, string> = new Map();
@@ -234,11 +241,9 @@ export class FileSystemTool {
   }
 
   // Batch operations
-  async batchWrite(operations: { path: string; content: string }[]): Promise<{
-    success: boolean;
-    results?: FileOperationResult[];
-    error?: string;
-  }> {
+  async batchWrite(
+    operations: { path: string; content: string }[],
+  ): Promise<BatchWriteResult> {
     const results: FileOperationResult[] = [];
 
     for (const op of operations) {

@@ -1,9 +1,18 @@
-import { Tool } from "@modelcontextprotocol/sdk/types.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { MCP } from "@modelcontextprotocol/sdk/index.js";
+// MCP types and interfaces - local implementation
+interface Tool {
+  name: string;
+  description: string;
+  inputSchema: any;
+  call: (request: any) => Promise<any>;
+}
+
+interface CallToolRequestSchema {
+  arguments: any;
+}
+
+interface ListToolsRequestSchema {
+  // Empty interface for now
+}
 import { TamboSDK } from "@/lib/tambo-sdk";
 
 interface TamboIntegrationConfig {
@@ -752,7 +761,7 @@ export function createTamboMCPTools(config: TamboIntegrationConfig = {}) {
       },
       async call(request: CallToolRequestSchema): Promise<any> {
         const { code } = request.arguments;
-        return await tamboIntegration.analyzeComplexity({ code });
+        return await tamboIntegration.analyzeComplexity(code);
       },
     },
 

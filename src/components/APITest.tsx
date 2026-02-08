@@ -1,388 +1,185 @@
-import React, { useState, useCallback } from "react";
-import { useTambo } from "./TamboProvider";
+"use client";
 
-interface APIEndpoint {
-  id: string;
-  name: string;
-  method: "GET" | "POST" | "PUT" | "DELETE";
-  url: string;
-  headers: Record<string, string>;
-  body?: string;
+import React, { useState } from "react";
+
+type ApiStatus = "idle" | "loading" | "success" | "error";
+
+interface ApiResult {
+  status: number;
+  data: any;
 }
 
 interface APITestProps {
-  endpoints?: APIEndpoint[];
-  onEndpointAdd?: (endpoint: APIEndpoint) => void;
-  onEndpointUpdate?: (endpoint: APIEndpoint) => void;
-  loading?: boolean;
-  error?: string;
+  endpoint?: string;
+  method?: "GET" | "POST";
 }
 
-export const APITest: React.FC<APITestProps> = ({
-  endpoints: initialEndpoints = [],
-  onEndpointAdd,
-  onEndpointUpdate,
-  loading = false,
-  error,
-}) => {
-  const { renderComponent } = useTambo();
-  const [endpoints, setEndpoints] = useState<APIEndpoint[]>(initialEndpoints);
-  const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, any>>({});
-  const [isTesting, setIsTesting] = useState(false);
+export function APITest({
+  endpoint = "/api/test",
+  method = "GET",
+}: APITestProps) {
+  const [status, setStatus] = useState<ApiStatus>("idle");
+  const [result, setResult] = useState<ApiResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const addEndpoint = useCallback(
-    (endpoint: Omit<APIEndpoint, "id">) => {
-      const newEndpoint: APIEndpoint = {
-        ...endpoint,
-        id: `endpoint-${Date.now()}`,
-      };
+  async function runTest() {
+    if (status === "loading") return;
 
-      const updatedEndpoints = [...endpoints, newEndpoint];
-      setEndpoints(updatedEndpoints);
-      if (onEndpointAdd) {
-        onEndpointAdd(newEndpoint);
-      }
-    },
-    [endpoints, onEndpointAdd],
-  );
+    setStatus("loading");
+    setError(null);
+    setResult(null);
 
-  const updateEndpoint = useCallback(
-    (id: string, updates: Partial<APIEndpoint>) => {
-      const updatedEndpoints = endpoints.map((endpoint) =>
-        endpoint.id === id ? { ...endpoint, ...updates } : endpoint,
-      );
-      setEndpoints(updatedEndpoints);
-      if (onEndpointUpdate) {
-        onEndpointUpdate(updatedEndpoints.find((e) => e.id === id)!);
-      }
-    },
-    [endpoints, onEndpointUpdate],
-  );
+    try {
+      const res = await fetch(endpoint, { method });
 
-  const testEndpoint = useCallback(
-    async (endpointId: string) => {
-      const endpoint = endpoints.find((e) => e.id === endpointId);
-      if (!endpoint) return;
+      const data = await res.json();
 
-      setIsTesting(true);
-      try {
-        // Mock API testing - in production this would make actual HTTP requests
-        const mockResponse = {
-          status: 200,
-          statusText: "OK",
-          headers: { "Content-Type": "application/json" },
-          data: {
-            message: "Mock response from Tambo AI API",
-            timestamp: new Date().toISOString(),
-          },
-          duration: Math.floor(Math.random() * 1000) + 100,
-        };
+      setResult({
+        status: res.status,
+        data,
+      });
 
-        setTestResults((prev) => ({
-          ...prev,
-          [endpointId]: {
-            ...mockResponse,
-            success: true,
-            timestamp: new Date().toISOString(),
-          },
-        }));
-      } catch (error) {
-        setTestResults((prev) => ({
-          ...prev,
-          [endpointId]: {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-            timestamp: new Date().toISOString(),
-          },
-        }));
-      } finally {
-        setIsTesting(false);
-      }
-    },
-    [endpoints],
-  );
-
-  if (loading) {
-    return (
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
-        <div className="animate-pulse">
-          <div className="bg-gray-300 h-8 w-1/3 mb-4"></div>
-          <div className="bg-gray-300 h-64 w-full"></div>
-        </div>
-      </div>
-    );
+      setStatus("success");
+    } catch (err) {
+      setError("Failed to call API");
+      setStatus("error");
+    }
   }
-
-  if (error) {
-    return (
-      <div className="border-2 border-red-300 rounded-lg p-4 bg-red-50">
-        <h3 className="text-red-600 font-semibold mb-2">API Test Error</h3>
-        <p className="text-red-500 text-sm">{error}</p>
-      </div>
-    );
-  }
-
-  const selectedEndpointData = endpoints.find((e) => e.id === selectedEndpoint);
 
   return (
-    <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">API Test</h3>
-        <div className="text-sm text-gray-500">
-          {endpoints.length} endpoints configured
+    <div style={styles.wrapper}>
+      <div style={styles.header}>API Test</div>
+
+      <div style={styles.body}>
+        <div style={styles.meta}>
+          <span>Endpoint:</span>
+          <code>{endpoint}</code>
         </div>
+
+        <div style={styles.meta}>
+          <span>Method:</span>
+          <code>{method}</code>
+        </div>
+
+        {status === "idle" && (
+          <div style={styles.neutral}>Ready to send request</div>
+        )}
+
+        {status === "loading" && (
+          <div style={styles.loading}>Sending request…</div>
+        )}
+
+        {status === "error" && error && <div style={styles.error}>{error}</div>}
+
+        {status === "success" && result && (
+          <pre style={styles.response}>
+            <code>
+              {JSON.stringify(
+                { status: result.status, data: result.data },
+                null,
+                2,
+              )}
+            </code>
+          </pre>
+        )}
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-4">
-          <div className="space-y-3">
-            <button
-              onClick={() =>
-                addEndpoint({
-                  name: "New Endpoint",
-                  method: "GET",
-                  url: "/api/test",
-                  headers: { "Content-Type": "application/json" },
-                })
-              }
-              className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              + Add Endpoint
-            </button>
-
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {endpoints.map((endpoint) => (
-                <div
-                  key={endpoint.id}
-                  className={`p-3 border rounded cursor-pointer ${
-                    selectedEndpoint === endpoint.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
-                  onClick={() => setSelectedEndpoint(endpoint.id)}
-                >
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-medium text-sm">{endpoint.name}</span>
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${
-                        endpoint.method === "GET"
-                          ? "bg-green-100 text-green-800"
-                          : endpoint.method === "POST"
-                            ? "bg-blue-100 text-blue-800"
-                            : endpoint.method === "PUT"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {endpoint.method}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-600 truncate">
-                    {endpoint.url}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="col-span-8">
-          {selectedEndpointData ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Method
-                  </label>
-                  <select
-                    value={selectedEndpointData.method}
-                    onChange={(e) =>
-                      updateEndpoint(selectedEndpoint!, {
-                        method: e.target.value as APIEndpoint["method"],
-                      })
-                    }
-                    className="w-full p-2 border border-gray-300 rounded"
-                  >
-                    <option value="GET">GET</option>
-                    <option value="POST">POST</option>
-                    <option value="PUT">PUT</option>
-                    <option value="DELETE">DELETE</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    URL
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedEndpointData.url}
-                    onChange={(e) =>
-                      updateEndpoint(selectedEndpoint!, { url: e.target.value })
-                    }
-                    className="w-full p-2 border border-gray-300 rounded"
-                    placeholder="/api/endpoint"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Headers
-                </label>
-                <div className="space-y-2">
-                  {Object.entries(selectedEndpointData.headers).map(
-                    ([key, value]) => (
-                      <div key={key} className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={key}
-                          onChange={(e) => {
-                            const newHeaders = {
-                              ...selectedEndpointData.headers,
-                            };
-                            delete newHeaders[key];
-                            newHeaders[e.target.value] = value;
-                            updateEndpoint(selectedEndpoint!, {
-                              headers: newHeaders,
-                            });
-                          }}
-                          className="p-2 border border-gray-300 rounded"
-                        />
-                        <input
-                          type="text"
-                          value={value}
-                          onChange={(e) => {
-                            const newHeaders = {
-                              ...selectedEndpointData.headers,
-                            };
-                            newHeaders[key] = e.target.value;
-                            updateEndpoint(selectedEndpoint!, {
-                              headers: newHeaders,
-                            });
-                          }}
-                          className="p-2 border border-gray-300 rounded"
-                        />
-                      </div>
-                    ),
-                  )}
-                  <button
-                    onClick={() => {
-                      const newHeaders = {
-                        ...selectedEndpointData.headers,
-                        "": "",
-                      };
-                      updateEndpoint(selectedEndpoint!, {
-                        headers: newHeaders,
-                      });
-                    }}
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    + Add Header
-                  </button>
-                </div>
-              </div>
-
-              {(selectedEndpointData.method === "POST" ||
-                selectedEndpointData.method === "PUT") && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Request Body
-                  </label>
-                  <textarea
-                    value={selectedEndpointData.body || ""}
-                    onChange={(e) =>
-                      updateEndpoint(selectedEndpoint!, {
-                        body: e.target.value,
-                      })
-                    }
-                    className="w-full p-2 border border-gray-300 rounded font-mono text-sm"
-                    rows={6}
-                    placeholder='{"key": "value"}'
-                  />
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => testEndpoint(selectedEndpoint!)}
-                  disabled={isTesting}
-                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-                >
-                  {isTesting ? "Testing..." : "Test Endpoint"}
-                </button>
-                <button
-                  onClick={() => setSelectedEndpoint(null)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                >
-                  Clear Selection
-                </button>
-              </div>
-
-              {selectedEndpoint && testResults[selectedEndpoint] && (
-                <div className="border border-gray-300 rounded-lg p-4">
-                  <h4 className="font-medium mb-2">Test Results</h4>
-                  <div
-                    className={`p-2 rounded mb-2 ${
-                      testResults[selectedEndpoint].success
-                        ? "bg-green-50 text-green-800 border border-green-200"
-                        : "bg-red-50 text-red-800 border border-red-200"
-                    }`}
-                  >
-                    {testResults[selectedEndpoint].success
-                      ? "✅ Success"
-                      : "❌ Failed"}
-                  </div>
-
-                  {testResults[selectedEndpoint].success ? (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div className="bg-gray-50 p-2 rounded">
-                          <span className="text-gray-600">Status:</span>{" "}
-                          {testResults[selectedEndpoint].status}
-                        </div>
-                        <div className="bg-gray-50 p-2 rounded">
-                          <span className="text-gray-600">Duration:</span>{" "}
-                          {testResults[selectedEndpoint].duration}ms
-                        </div>
-                        <div className="bg-gray-50 p-2 rounded">
-                          <span className="text-gray-600">Time:</span>{" "}
-                          {new Date(
-                            testResults[selectedEndpoint].timestamp,
-                          ).toLocaleTimeString()}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Response
-                        </label>
-                        <pre className="bg-gray-900 text-green-400 p-3 rounded text-sm overflow-auto max-h-32">
-                          {JSON.stringify(
-                            testResults[selectedEndpoint].data,
-                            null,
-                            2,
-                          )}
-                        </pre>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-red-600">
-                      Error: {testResults[selectedEndpoint].error}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <div className="text-gray-500 mb-2">No endpoint selected</div>
-              <div className="text-sm text-gray-400">
-                Select an endpoint from the list to configure and test
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <button
+        onClick={runTest}
+        disabled={status === "loading"}
+        style={{
+          ...styles.button,
+          ...(status === "loading" ? styles.buttonDisabled : {}),
+        }}
+      >
+        {status === "loading" ? "Running…" : "Run API Test"}
+      </button>
     </div>
   );
+}
+
+/* ---------------- STYLES ---------------- */
+
+const styles: Record<string, React.CSSProperties> = {
+  wrapper: {
+    borderRadius: 12,
+    border: "1px solid #1e293b",
+    background: "#020617",
+    overflow: "hidden",
+    animation: "fadeIn 0.3s ease-out",
+  },
+  header: {
+    padding: "10px 14px",
+    fontSize: 13,
+    fontWeight: 600,
+    borderBottom: "1px solid #1e293b",
+  },
+  body: {
+    padding: 14,
+  },
+  meta: {
+    fontSize: 12,
+    color: "#94a3b8",
+    display: "flex",
+    gap: 6,
+    marginBottom: 6,
+  },
+  neutral: {
+    fontSize: 13,
+    color: "#94a3b8",
+    marginTop: 10,
+  },
+  loading: {
+    fontSize: 13,
+    color: "#38bdf8",
+    animation: "pulse 1.4s infinite",
+    marginTop: 10,
+  },
+  error: {
+    fontSize: 13,
+    color: "#ef4444",
+    marginTop: 10,
+  },
+  response: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 8,
+    background: "#0f172a",
+    fontSize: 12,
+    lineHeight: 1.5,
+    maxHeight: 240,
+    overflow: "auto",
+    color: "#e5e7eb",
+  },
+  button: {
+    width: "100%",
+    padding: "10px 0",
+    border: "none",
+    background: "#2563eb",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 500,
+  },
+  buttonDisabled: {
+    background: "#334155",
+    cursor: "not-allowed",
+  },
 };
+
+/* ---------------- ANIMATIONS ---------------- */
+
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.innerHTML = `
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0% { opacity: .4 }
+      50% { opacity: 1 }
+      100% { opacity: .4 }
+    }
+  `;
+  document.head.appendChild(style);
+}

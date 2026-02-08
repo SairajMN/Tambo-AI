@@ -1,87 +1,56 @@
 "use client";
 
-import React from "react";
+import React, { createContext, useContext, useMemo, ReactNode } from "react";
 
-export interface ComponentProps {
-  [key: string]: any;
+/* ---------------- TYPES ---------------- */
+
+interface TamboContextValue {
+  appName: string;
+  version: string;
+  debug: boolean;
 }
 
-export interface ComponentDefinition {
-  name: string;
-  component: React.ComponentType<ComponentProps>;
-  propsSchema?: any;
-  defaultProps?: ComponentProps;
-  description?: string;
+interface TamboProviderProps {
+  children: ReactNode;
+  appName?: string;
+  version?: string;
+  debug?: boolean;
 }
 
-export interface TamboContextType {
-  components: Record<string, ComponentDefinition>;
-  registerComponent: (definition: ComponentDefinition) => void;
-  getComponent: (name: string) => ComponentDefinition | null;
-  renderComponent: (name: string, props?: ComponentProps) => React.ReactNode;
-  listComponents: () => string[];
-}
+/* ---------------- CONTEXT ---------------- */
 
-const TamboContext = React.createContext<TamboContextType | null>(null);
+const TamboContext = createContext<TamboContextValue | null>(null);
 
-export const useTambo = () => {
-  const context = React.useContext(TamboContext);
-  if (!context) {
-    throw new Error("useTambo must be used within a TamboProvider");
-  }
-  return context;
-};
+/* ---------------- PROVIDER ---------------- */
 
-export const TamboProvider: React.FC<{ children: React.ReactNode }> = ({
+export function TamboProvider({
   children,
-}) => {
-  const [components, setComponents] = React.useState<
-    Record<string, ComponentDefinition>
-  >({});
-
-  const registerComponent = React.useCallback(
-    (definition: ComponentDefinition) => {
-      setComponents((prev) => ({
-        ...prev,
-        [definition.name]: definition,
-      }));
-    },
-    [],
+  appName = "Tambo App",
+  version = "0.1.0",
+  debug = false,
+}: TamboProviderProps) {
+  const value = useMemo(
+    () => ({
+      appName,
+      version,
+      debug,
+    }),
+    [appName, version, debug],
   );
-
-  const getComponent = React.useCallback(
-    (name: string) => {
-      return components[name] || null;
-    },
-    [components],
-  );
-
-  const renderComponent = React.useCallback(
-    (name: string, props: ComponentProps = {}) => {
-      const componentDef = getComponent(name);
-      if (!componentDef) {
-        return <div className="text-red-500">Component "{name}" not found</div>;
-      }
-
-      const Component = componentDef.component;
-      return <Component {...componentDef.defaultProps} {...props} />;
-    },
-    [getComponent],
-  );
-
-  const listComponents = React.useCallback(() => {
-    return Object.keys(components);
-  }, [components]);
-
-  const value: TamboContextType = {
-    components,
-    registerComponent,
-    getComponent,
-    renderComponent,
-    listComponents,
-  };
 
   return (
     <TamboContext.Provider value={value}>{children}</TamboContext.Provider>
   );
-};
+}
+
+/* ---------------- HOOK ---------------- */
+
+export function useTambo() {
+  const ctx = useContext(TamboContext);
+
+  if (!ctx) {
+    throw new Error("useTambo must be used within a <TamboProvider>");
+  }
+
+  return ctx;
+}

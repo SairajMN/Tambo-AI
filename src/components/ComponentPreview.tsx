@@ -1,109 +1,133 @@
+"use client";
+
 import React from "react";
 
 interface ComponentPreviewProps {
-  componentName: string;
-  componentCode: string;
-  onEdit?: (newCode: string) => void;
-}
-
-export function ComponentPreview({
-  componentName,
-  componentCode,
-  onEdit,
-}: ComponentPreviewProps) {
-  return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 mb-4">
-      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
-        <h3 className="font-semibold text-gray-900">{componentName}</h3>
-        <p className="text-sm text-gray-600 mt-1">Generated React Component</p>
-      </div>
-
-      <div className="p-4">
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Preview</h4>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-32">
-            {/* Dynamic component rendering would go here */}
-            <div className="text-center text-gray-500">
-              <div className="text-4xl mb-2">📦</div>
-              <p>Component Preview</p>
-              <p className="text-sm mt-1">Real-time rendering coming soon</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
-            Generated Code
-          </h4>
-          <div className="bg-gray-900 text-green-400 rounded-lg p-3 font-mono text-sm overflow-auto max-h-48">
-            <pre>{componentCode}</pre>
-          </div>
-        </div>
-
-        {onEdit && (
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Edit Component
-            </h4>
-            <textarea
-              value={componentCode}
-              onChange={(e) => onEdit(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-              rows={10}
-              placeholder="Edit the component code here..."
-            />
-            <div className="mt-2 text-xs text-gray-500">
-              Note: Code editing is for demonstration. In production, this would
-              integrate with the agent system.
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  name: string;
+  code?: string;
 }
 
 interface ComponentListProps {
   components: string[];
-  onComponentSelect?: (componentName: string) => void;
+  selected: string | null;
+  onSelect: (name: string) => void;
 }
 
 export function ComponentList({
   components,
-  onComponentSelect,
+  selected,
+  onSelect,
 }: ComponentListProps) {
-  if (components.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 text-center">
-        <div className="text-4xl mb-2">🏗️</div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          No Components Yet
-        </h3>
-        <p className="text-gray-600">
-          Start describing your app idea in the conversation panel to generate
-          components.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4">
-      <h3 className="font-semibold text-gray-900 mb-3">Generated Components</h3>
-      <div className="space-y-2">
-        {components.map((component, index) => (
-          <button
-            key={index}
-            onClick={() => onComponentSelect?.(component)}
-            className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 border border-gray-200 transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-900">{component}</span>
-              <span className="text-xs text-gray-500">React Component</span>
-            </div>
-          </button>
-        ))}
-      </div>
+    <div style={styles.listWrapper}>
+      <div style={styles.listHeader}>Generated Components</div>
+
+      {components.length === 0 && (
+        <div style={styles.empty}>No components generated yet</div>
+      )}
+
+      {components.map((c) => (
+        <div
+          key={c}
+          onClick={() => onSelect(c)}
+          style={{
+            ...styles.listItem,
+            ...(selected === c ? styles.listItemActive : {}),
+          }}
+        >
+          {c}
+        </div>
+      ))}
     </div>
   );
+}
+
+export function ComponentPreview({ name, code }: ComponentPreviewProps) {
+  return (
+    <div style={styles.previewWrapper}>
+      <div style={styles.previewHeader}>{name}</div>
+
+      {code ? (
+        <pre style={styles.code}>
+          <code>{code}</code>
+        </pre>
+      ) : (
+        <div style={styles.empty}>No code available</div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- STYLES ---------------- */
+
+const styles: Record<string, React.CSSProperties> = {
+  listWrapper: {
+    marginBottom: 16,
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    overflow: "hidden",
+    background: "#020617",
+    animation: "fadeIn 0.3s ease-out",
+  },
+  listHeader: {
+    padding: "10px 14px",
+    fontSize: 13,
+    fontWeight: 600,
+    borderBottom: "1px solid #1e293b",
+    background: "#020617",
+  },
+  listItem: {
+    padding: "10px 14px",
+    cursor: "pointer",
+    borderBottom: "1px solid #020617",
+    color: "#cbd5f5",
+    transition: "background 0.15s ease",
+  },
+  listItemActive: {
+    background: "#1d4ed8",
+    color: "#fff",
+  },
+  previewWrapper: {
+    border: "1px solid #1e293b",
+    borderRadius: 12,
+    overflow: "hidden",
+    background: "#020617",
+    animation: "fadeIn 0.3s ease-out",
+  },
+  previewHeader: {
+    padding: "10px 14px",
+    fontSize: 13,
+    fontWeight: 600,
+    borderBottom: "1px solid #1e293b",
+  },
+  code: {
+    padding: 14,
+    margin: 0,
+    fontSize: 12,
+    lineHeight: 1.5,
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+    color: "#e5e7eb",
+    background: "#020617",
+    maxHeight: 320,
+    overflow: "auto",
+  },
+  empty: {
+    padding: 14,
+    fontSize: 13,
+    color: "#64748b",
+    fontStyle: "italic",
+  },
+};
+
+/* ---------------- ANIMATIONS ---------------- */
+
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.innerHTML = `
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  `;
+  document.head.appendChild(style);
 }

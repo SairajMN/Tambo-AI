@@ -18,9 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <TamboProvider>
-          <div className="min-h-screen bg-background">{children}</div>
-        </TamboProvider>
+        <TamboProvider>{children}</TamboProvider>
       </body>
     </html>
   );
